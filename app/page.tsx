@@ -75,7 +75,7 @@ export default function Home() {
     const trimmed = input.trim();
     if (!trimmed || loading || isEscalated) return;
 
-    const nextMessages = [...messages, { role: "user", content: trimmed }];
+    const nextMessages: ChatMessage[] = [...messages, { role: "user" as const, content: trimmed }];
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
@@ -85,7 +85,7 @@ export default function Home() {
       setMode(data.mode);
       setTriageLog(data.triage);
       setValidationLog(data.validation);
-      setMessages([...nextMessages, { role: "assistant", content: data.message }]);
+      setMessages([...nextMessages, { role: "assistant" as const, content: data.message }]);
       setStage(data.nextStage);
       setEmergencyAction(data.emergencyAction);
     } finally {

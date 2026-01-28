@@ -49,6 +49,75 @@ const empathyLines = (text?: string, symptomContext?: string) => {
   return lines;
 };
 
+/**
+ * Generate relevant red flag screening questions based on the symptoms mentioned.
+ * Returns questions that are contextually appropriate rather than generic.
+ */
+const generateRedFlagQuestions = (symptomContext?: string): string[] => {
+  const text = (symptomContext || "").toLowerCase();
+  const questions: string[] = [];
+
+  // Head-related symptoms (be specific to avoid matching "head" in other words)
+  if (/\b(headache|head pain|headache|migraine)\b/i.test(text)) {
+    questions.push("Is this the worst headache you've ever had?");
+    questions.push("Do you have any neck stiffness or pain?");
+    questions.push("Have you noticed any vision changes, confusion, or trouble speaking?");
+  }
+
+  // Chest/respiratory symptoms
+  if (/chest|breathing|breath|wheezing|cough/i.test(text)) {
+    questions.push("Are you having any chest pain, pressure, or tightness?");
+    questions.push("Have you noticed any blue lips or difficulty catching your breath?");
+    questions.push("Are you feeling lightheaded, dizzy, or like you might pass out?");
+  }
+
+  // Stomach/digestive symptoms
+  if (/stomach|nausea|vomit|vomiting|diarrhea|abdominal|belly/i.test(text)) {
+    questions.push("Are you vomiting blood or seeing blood in your stool?");
+    questions.push("Is the pain severe or getting worse quickly?");
+    questions.push("Are you able to keep fluids down?");
+  }
+
+  // Neurological symptoms
+  if (/dizzy|dizziness|lightheaded|faint|confusion|weakness|numb/i.test(text)) {
+    questions.push("Have you noticed any one-sided weakness or numbness?");
+    questions.push("Are you having trouble speaking or seeing clearly?");
+    questions.push("Have you fainted or lost consciousness?");
+  }
+
+  // Allergic reaction symptoms
+  if (/swelling|swollen|rash|hives|allergic|tongue|face/i.test(text)) {
+    questions.push("Is your face, tongue, or throat swelling?");
+    questions.push("Are you having trouble breathing or swallowing?");
+    questions.push("Did this start after eating something or taking a medication?");
+  }
+
+  // Pain-related (general)
+  if (/pain|ache|hurts|hurting|sore/i.test(text) && !questions.length) {
+    questions.push("Is the pain severe or getting worse quickly?");
+    questions.push("Are you able to function normally, or is it interfering with daily activities?");
+  }
+
+  // Always include critical general questions if we haven't covered them
+  const hasGeneralQuestions = questions.some(
+    (q) =>
+      q.includes("chest pain") ||
+      q.includes("trouble breathing") ||
+      q.includes("fainting") ||
+      q.includes("confusion") ||
+      q.includes("weakness")
+  );
+
+  if (!hasGeneralQuestions) {
+    questions.push("Are you having any chest pain, trouble breathing, or feeling like you might pass out?");
+  }
+
+  // Always ask about severe bleeding and rapid worsening
+  questions.push("Are you experiencing severe bleeding that won't stop, or do your symptoms seem to be getting much worse very quickly?");
+
+  return questions;
+};
+
 export const repairResponse = (context: RepairContext): string => {
   const symptom = detectSymptom(context.symptomContext || context.latestUserMessage);
   const empathy = empathyLines(context.latestUserMessage, context.symptomContext);
@@ -64,13 +133,14 @@ export const repairResponse = (context: RepairContext): string => {
   }
 
   if (context.stage === "clarify") {
+    const redFlagQuestions = generateRedFlagQuestions(context.symptomContext || context.latestUserMessage);
+    // Ensure questions end with ? but don't double up
+    const formattedQuestions = redFlagQuestions.map((q) => (q.endsWith("?") ? q : q + "?"));
     return [
       "I understand.",
       ...empathy,
       "Please share any other details that feel important.",
-      "Are you having any chest pain, trouble breathing, fainting, severe bleeding, new confusion, or one-sided weakness?",
-      "Have you noticed blue lips, swelling of your face or tongue, or a severe allergic reaction?",
-      "Do you feel your symptoms are suddenly getting much worse?",
+      ...formattedQuestions,
       comfort,
     ]
       .filter(Boolean)
@@ -101,6 +171,7 @@ export const repairResponse = (context: RepairContext): string => {
         .join("\n");
     }
 
+    // Emergency or unclear cases - immediate action needed
     const assessment =
       context.triageLevel === "unclear"
         ? `I'm concerned because of your risk factors and I can't safely sort this out remotely.`
@@ -110,14 +181,14 @@ export const repairResponse = (context: RepairContext): string => {
         ? "Please go to an urgent care or emergency department today."
         : "Please call 911 now or go to the nearest emergency department right away.";
 
+    // For emergencies, only include essential information - no 3-day follow-up or casual closing
     return [
       `Based on what you've told me, ${assessment}`,
       "I understand.",
+      ...empathy,
       "This is beyond what I can safely assess remotely.",
       `Here's what I recommend: ${action} How does this sound to you?`,
-      followUp,
       disclaimer,
-      comfort,
     ]
       .filter(Boolean)
       .join(" ");
