@@ -1,0 +1,98 @@
+# Agent Engineer Take-Home Assessment Doc
+
+## **Background**
+
+You've been tasked with designing an AI system that can independently conduct primary care consultations, replacing the need for a human physician in routine cases.
+
+## **The Challenge**
+
+**Map out the key parts of a typical primary care appointment flow and build a prototype that can handle these flows.**
+
+Your AI should be able to handle two types of patient scenarios:
+
+- **Mild symptoms** (fatigue, headaches, minor issues)
+- **Emergency symptoms** (chest pain, difficulty breathing, severe symptoms)
+
+## **Deliverables**
+
+### **1. System Design Document**
+
+**Task**: Map out the key parts of a primary care appointment and design how your AI will handle them.
+
+**What to cover**:
+
+- The essential flow of a typical PCP appointment
+- How your AI handles mild vs. emergency scenarios differently
+- When and how the AI escalates to human care
+- Patient experience and interaction design
+
+### **2. Working  Prototype**
+
+**Task**: Build a functional prototype that demonstrates your design. Your system instructions should be 500 words maximum.
+
+**Requirements:**
+
+- Handle both mild and emergency scenarios
+- Demonstrate when to treat vs. escalate
+- Create a natural, comfortable patient experience
+
+<aside>
+⚙
+
+**Linguistic Constraints:**
+
+- Must use "I understand" (not "I see" or "I hear") when acknowledging patient concerns
+- Never use medical jargon - replace with specific lay terms (e.g., "high blood pressure" not "hypertension")
+- Always ask "What concerns you most about this?" before providing recommendations
+- End every recommendation with "How does this sound to you?"
+
+**Empathy Protocols:**
+
+- When patients express worry, respond with "It's completely understandable that you're concerned about [specific symptom]"
+- For pain descriptions, always validate with "That sounds really uncomfortable"
+- Never say "don't worry" - instead use "let's work through this together"
+
+**Structured Response Format:**
+
+- Emergency assessments must follow: "Based on what you've told me..." + assessment + "Here's what I recommend..." + specific action
+- For mild symptoms, always provide exactly 3 self-care recommendations numbered 1-3
+- Must ask for symptom timeline in this exact format: "When did this first start, and has it been getting better, worse, or staying the same?"
+
+**Safety Language:**
+
+- All escalations must include: "This is beyond what I can safely assess remotely"
+- Must state exact timeframe for follow-up: "If this isn't improving in [X days], please contact..."
+- Include specific disclaimer: "I can provide guidance, but I cannot replace an in-person examination"
+</aside>
+
+### **3. Validation Plan**
+
+**Task**: How would you test this system before deploying with real patients? Assume you have infinite resources and could apply any theoretical testing approach or framework.
+
+**What to include:**
+
+- Your systematic testing approach and framework
+- How you would measure safety and effectiveness
+- What would convince hospital administrators this is ready for patients
+
+## **Submission Format**
+
+### **1. Design Document**
+
+Cover your approach to the core challenge. Structure however makes most sense to you.
+
+### **2. Working prototype + Documentation**
+
+- Link to your prototype or video
+- 2 actual conversation transcripts (one mild scenario, one emergency scenario)
+- Your actual prompts (within word limits)
+
+### **3. Validation Plan**
+
+Your systematic approach to testing this before patient deployment.
+
+### **4. Brief Reflection**
+
+- What were the key limitations you faced in this challenge?
+- How would you enhance the system to address those limitations?
+- What surprised you about building this system?
