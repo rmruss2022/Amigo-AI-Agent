@@ -187,7 +187,7 @@ Return ONLY valid JSON with this exact structure:
 }
 
 Triage guidelines:
-- "emergency": Life-threatening symptoms, severe distress, OR symptoms requiring immediate medical attention including: chest pain with breathing trouble, stroke-like symptoms, severe allergic reactions, severe bleeding, seizures, broken bones/fractures, dislocations, severe injuries that need X-rays or medical evaluation
+- "emergency": Life-threatening symptoms, severe distress, OR symptoms requiring immediate medical attention including: severe chest pain with breathing trouble, stroke-like symptoms, severe allergic reactions, severe bleeding, seizures, broken bones/fractures, dislocations, severe injuries that need X-rays or medical evaluation
 - "unclear": High-risk patients (pregnant, very young infants, immunocompromised) with symptoms that need professional evaluation but aren't immediately life-threatening
 - "mild": Common, non-urgent symptoms that can be managed with self-care (mild headaches, fatigue, minor cold symptoms, etc.)
 
