@@ -159,13 +159,13 @@ export const repairResponse = (context: RepairContext): string => {
       return [
         "I understand.",
         ...empathy,
-        `Based on what you shared about ${symptom}, here are some self-care steps:`,
-        `1. Rest, drink water, and keep meals light as you can. How does this sound to you?`,
-        `2. Use comfort measures like a cool or warm compress, depending on what feels better. How does this sound to you?`,
-        `3. Use a pain relief medicine you have used before, like Tylenol or Advil, if it is safe for you. How does this sound to you?`,
-        followUp,
         disclaimer,
-        comfort,
+        `Based on what you shared about ${symptom}, here are some self-care steps:`,
+        `1. Rest, drink water, and keep meals light as you can.`,
+        `2. Use comfort measures like a cool or warm compress, depending on what feels better.`,
+        `3. Use a pain relief medicine you have used before, like Tylenol or Advil, if it is safe for you.`,
+        followUp,
+        "How does this sound to you?",
       ]
         .filter(Boolean)
         .join("\n");

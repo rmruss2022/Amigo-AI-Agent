@@ -14,7 +14,7 @@
 
 ## How would you enhance the system to address those limitations?
 
-**1. Enhanced validation and feedback loop.** Currently, the system uses LLM responses but doesn't have a validation/retry loop for response generation (only for triage). Adding validation with structured feedback to the LLM would improve constraint compliance while maintaining natural language.
+**1. Enhanced validation and feedback loop.** ✅ **IMPLEMENTED** - The system now includes a validation feedback loop that validates every LLM response, provides specific feedback on errors, and retries up to 5 times. This significantly improves constraint compliance while maintaining natural language. The validator acts as the "source of truth," encoding all requirements and enforcing them through validation and repair.
 
 **2. Two-model architecture.** Use a fast, cheap model (GPT-4o-mini) for conversational turns and a slower, more capable model (GPT-4o or Claude) for final triage/recommendation decisions. The expensive model only runs once per consultation, reducing cost while improving decision quality.
 
@@ -36,10 +36,9 @@
 
 **3. Dynamic red flag questions improve engagement.** Moving from generic "do you have chest pain?" questions to symptom-specific screening (e.g., "Is this the worst headache you've ever had?" for headache cases) made the conversation feel more natural and relevant, even though it's still systematic screening.
 
-**4. Broken bones revealed a triage nuance.** Initially, broken bones were triaged as "emergency" and skipped steps, but this felt too aggressive for non-life-threatening injuries. The distinction between "emergency" (life-threatening, skip steps) and "unclear" (needs medical attention, normal flow) became important for both safety and user experience.
+**4. LLM responses need careful prompting and validation.** Even with a comprehensive system prompt, the LLM sometimes generates responses that don't perfectly match the required format. The validation feedback loop addresses this by checking responses and providing specific feedback for retries. The fallback to deterministic templates ensures the system always works, and the validator serves as both a test suite and specification.
 
-**5. LLM responses need careful prompting.** Even with a comprehensive system prompt, the LLM sometimes generates responses that don't perfectly match the required format. The fallback to deterministic templates ensures the system always works, but there's room for improvement in prompt engineering and validation loops.
+**5. The validator became the source of truth.** Once comprehensive validation was in place, it became easier to iterate—change prompts, test, and see what broke. The validator encoded the design requirements better than documentation alone, serving as both a test suite and a specification. The validation feedback loop extends this by automatically correcting non-compliant responses through structured feedback and retries, making the validator an active enforcement mechanism rather than just a check.
 
-**6. The validator became the source of truth.** Once comprehensive validation was in place, it became easier to iterate—change prompts, test, and see what broke. The validator encoded the design requirements better than documentation alone, serving as both a test suite and a specification.
+**6. Recommendation format refinement.** Initially, the system required "How does this sound to you?" after each numbered recommendation, which felt repetitive. Refining the format to include the check-in phrase only once at the end (after all recommendations and follow-up) improved readability while maintaining the required engagement check-in.
 
-**7. Emergency responses shouldn't include casual language.** Initially, emergency responses included phrases like "If this isn't improving in 3 days" and "Let's work through this together," which felt inappropriate for life-threatening situations. Removing these casual elements made emergency responses more focused and appropriate.

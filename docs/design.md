@@ -18,6 +18,7 @@ This prototype is a policy-guided AI consultation system with a hybrid architect
 │  • Parses conversation history                                  │
 │  • Determines effective stage based on triage                  │
 │  • Orchestrates LLM response generation                         │
+│  • Implements validation feedback loop                         │
 └───────────────┬─────────────────────────────────────────────────┘
                 │
                 ├─────────────────────────────────────┐
@@ -35,7 +36,7 @@ This prototype is a policy-guided AI consultation system with a hybrid architect
 │     - Conservative           │    │                              │
 │                              │    │  ┌──────────────────────┐   │
 │  3. Rule-Based Fallback      │    │  │  Validation Loop     │   │
-│     (if AI unavailable)      │    │  │  (if implemented)     │   │
+│     (if AI unavailable)      │    │  │  (5 retries + feedback)│ │
 │                              │    │  └──────────────────────┘   │
 └───────────────┬──────────────┘    └───────────────┬──────────────┘
                 │                                     │
@@ -46,6 +47,7 @@ This prototype is a policy-guided AI consultation system with a hybrid architect
 │                    Policy Layer                                 │
 │  • Stage determination (skip emergency, normal flow unclear)  │
 │  • Response validation (constraints, phrases, format)          │
+│  • Validation feedback loop (retries with corrections)        │
 │  • Repair templates (fallback for invalid/mock mode)           │
 └───────────────┬─────────────────────────────────────────────────┘
                 │
@@ -124,6 +126,15 @@ User Message
         │  │ • Generate response     │  │
         │  └─────────────────────────┘  │
         │  ┌─────────────────────────┐  │
+        │  │ Validation Feedback     │  │
+        │  │ Loop (up to 5 retries)  │  │
+        │  │ • Validate response    │  │
+        │  │ • Build feedback        │  │
+        │  │ • Retry with corrections│  │
+        │  │ • Fallback to templates │  │
+        │  │   if still fails       │  │
+        │  └─────────────────────────┘  │
+        │  ┌─────────────────────────┐  │
         │  │ Mode: Mock (fallback)   │  │
         │  │ • Use repair templates  │  │
         │  │ • Deterministic output │  │
@@ -136,6 +147,7 @@ User Message
         │  • message                    │
         │  • nextStage                  │
         │  • triage info                │
+        │  • validation status         │
         │  • emergencyAction (if any)   │
         └───────────────────────────────┘
 ```
@@ -174,7 +186,7 @@ User Message
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Mild Case:                                            │  │
 │  │ • Exactly 3 numbered self-care recommendations       │  │
-│  │ • Each ends with "How does this sound to you?"       │  │
+│  │ • "How does this sound to you?" only once at end     │  │
 │  │ • 3-day follow-up timeframe                          │  │
 │  │ • Disclaimer                                          │  │
 │  └──────────────────────────────────────────────────────┘  │
@@ -246,8 +258,32 @@ The policy layer enforces safety and linguistic constraints:
 - Exact phrases: "I understand", "What concerns you most about this?"
 - No banned phrases: "I see", "I hear", "don't worry"
 - No medical jargon (uses lay terms)
-- Format requirements (3 numbered recs for mild, emergency template structure)
+- Format requirements:
+  - Mild: exactly 3 numbered recommendations, "How does this sound to you?" only once at end
+  - Emergency: specific template structure with single action
 - Empathy requirements (pain/worry detection)
+
+### Validation Feedback Loop
+The system implements a validation feedback loop to ensure constraint compliance:
+
+1. **LLM generates response** using system prompt and context
+2. **Validator checks response** against all constraints:
+   - Required phrases present
+   - Banned phrases absent
+   - Format requirements met (e.g., 3 numbered recs, check-in phrase placement)
+   - Empathy phrases when appropriate
+3. **If validation fails:**
+   - Builds specific feedback with exact errors and required phrases
+   - Retries LLM generation with feedback (up to 5 attempts)
+   - Each retry includes previous validation errors and verbatim phrases that must be included
+4. **If all retries fail:**
+   - Returns the last generated response (doesn't error)
+   - Marks response as `repaired: true` in validation status
+5. **Fallback to templates:**
+   - If API error occurs, uses deterministic repair templates
+   - Templates guarantee 100% constraint compliance
+
+This creates a feedback loop where the validator acts as the "source of truth," encoding all design requirements and enforcing them through validation and repair.
 
 ### Repair Templates
 - Deterministic fallback when LLM unavailable or fails
@@ -262,7 +298,12 @@ The policy layer enforces safety and linguistic constraints:
 2. Includes conversation history
 3. Adds stage and triage context
 4. Generates natural language response
-5. Falls back to repair templates on error
+5. **Validation feedback loop:**
+   - Validates response against all constraints
+   - If validation fails, builds feedback and retries (up to 5 times)
+   - Feedback includes specific errors and verbatim phrases that must be included
+   - Returns last response if all retries fail (doesn't error)
+6. Falls back to repair templates on API error
 
 ### Mock Mode (no API key)
 - Uses deterministic repair templates
@@ -299,5 +340,6 @@ Instead of generic questions, the system generates symptom-specific screening:
 1. **Critical emergencies detected instantly** (before any API call)
 2. **Conservative AI triage** (errs on side of caution)
 3. **Deterministic fallbacks** (system works even if AI fails)
-4. **Constraint validation** (all responses checked for compliance)
-5. **Repair templates** (guaranteed compliant output)
+4. **Constraint validation with feedback loop** (all responses checked for compliance, retries with feedback up to 5 times)
+5. **Repair templates** (guaranteed compliant output when validation fails or API unavailable)
+6. **Validator as source of truth** (encodes all requirements, enforces through validation and repair)

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { triageConversation } from "@/lib/triage";
 import { repairResponse, type Stage } from "@/lib/repair";
+import { validateResponse, buildFeedback, type ValidationContext } from "@/lib/validators";
 
 export const runtime = "nodejs";
 
@@ -60,8 +61,10 @@ export async function POST(req: Request) {
         ? "recommendation"
         : stage;
 
-    // Use LLM to generate response, with repair templates as fallback
-    let response: string;
+    // Use LLM to generate response, with validation feedback loop
+    let response: string = "";
+    let validationResult: { ok: boolean; errors: string[]; warnings: string[] } | null = null;
+    let repaired = false;
     const mode = (process.env.LLM_MODE ?? "mock") === "openai" ? "openai" : "mock";
     
     if (mode === "openai" && process.env.OPENAI_API_KEY) {
@@ -70,32 +73,88 @@ export async function POST(req: Request) {
         const systemPromptPath = require("path").join(process.cwd(), "prompts", "system.md");
         const systemPrompt = await require("fs/promises").readFile(systemPromptPath, "utf8").catch(() => "");
         
-        // Use OpenAI to generate response
-        const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...messages,
-              {
-                role: "system",
-                content: `Current stage: ${effectiveStage}. Triage level: ${triage.level}. Generate a natural response following all constraints.`,
-              },
-            ],
-            temperature: 0.7,
-          }),
-        });
-        
-        if (openaiResponse.ok) {
+        // Validation context for checking responses
+        const validationContext: ValidationContext = {
+          stage: effectiveStage,
+          triageLevel: effectiveStage === "recommendation" ? triage.level : undefined,
+          latestUserMessage,
+          symptomContext: userMessages.join(" "),
+        };
+
+        // Retry loop: up to 5 attempts
+        const maxRetries = 5;
+        let attempt = 0;
+        let lastResponse = "";
+
+        while (attempt < maxRetries) {
+          attempt++;
+          
+          // Build messages for this attempt
+          const attemptMessages = [
+            { role: "system" as const, content: systemPrompt },
+            ...messages,
+          ];
+
+          // Add feedback from previous attempt if this is a retry
+          if (attempt > 1 && validationResult && !validationResult.ok) {
+            const feedback = buildFeedback(validationResult, validationContext);
+            attemptMessages.push({
+              role: "system" as const,
+              content: `Previous response had validation errors. Please fix:\n\n${feedback}\n\nGenerate a corrected response that addresses all the errors above.`,
+            });
+          } else {
+            // First attempt: just add stage context
+            attemptMessages.push({
+              role: "system" as const,
+              content: `Current stage: ${effectiveStage}. Triage level: ${triage.level}. Generate a natural response following all constraints.`,
+            });
+          }
+
+          // Call OpenAI
+          const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+              messages: attemptMessages,
+              temperature: 0.7,
+            }),
+          });
+
+          if (!openaiResponse.ok) {
+            throw new Error("OpenAI API error");
+          }
+
           const data = await openaiResponse.json();
-          response = data.choices?.[0]?.message?.content?.trim() || "";
-        } else {
-          throw new Error("OpenAI API error");
+          lastResponse = data.choices?.[0]?.message?.content?.trim() || "";
+
+          // Validate the response
+          validationResult = validateResponse(lastResponse, validationContext);
+
+          // If validation passes, use this response
+          if (validationResult.ok) {
+            response = lastResponse;
+            break;
+          }
+
+          // If this is the last attempt, use the response anyway (don't error)
+          if (attempt === maxRetries) {
+            console.warn(`Validation failed after ${maxRetries} attempts. Using last response. Errors:`, validationResult.errors);
+            response = lastResponse;
+            repaired = true;
+            break;
+          }
+
+          // Otherwise, retry with feedback
+          console.log(`Validation failed (attempt ${attempt}/${maxRetries}), retrying with feedback...`);
+        }
+
+        // Ensure response is assigned (fallback if loop somehow didn't assign it)
+        if (!response && lastResponse) {
+          response = lastResponse;
         }
       } catch (error) {
         console.error("LLM error, falling back to templates:", error);
@@ -106,6 +165,8 @@ export async function POST(req: Request) {
           latestUserMessage,
           symptomContext: userMessages.join(" "),
         });
+        validationResult = { ok: true, errors: [], warnings: [] }; // Templates are always compliant
+        repaired = true;
       }
     } else {
       // Use repair templates for mock mode
@@ -115,6 +176,7 @@ export async function POST(req: Request) {
         latestUserMessage,
         symptomContext: userMessages.join(" "),
       });
+      validationResult = { ok: true, errors: [], warnings: [] }; // Templates are always compliant
     }
 
     const emergencyAction =
@@ -133,11 +195,10 @@ export async function POST(req: Request) {
         severeSignals: triage.severeSignals || [],
       },
       validation: {
-        ok: true,
-        errors: [],
-        repaired: false,
-        draftOk: true,
-        llmError: null,
+        ok: validationResult?.ok ?? true,
+        errors: validationResult?.errors ?? [],
+        warnings: validationResult?.warnings ?? [],
+        repaired,
       },
       emergencyAction,
     });

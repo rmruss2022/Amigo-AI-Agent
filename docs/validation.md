@@ -26,8 +26,11 @@
 - Emergency sensitivity/recall (target: very high)
 - False escalation rate (target: low but acceptable for safety)
 - Constraint compliance rate (target: 99.9%+)
+  - Validated through automated feedback loop (up to 5 retries per response)
+  - Validator checks: required phrases, banned phrases, format, empathy
 - Jargon rate (target: near zero)
 - Patient satisfaction and clarity scores
+- Validation retry rate (measures LLM adherence to constraints)
 
 ## Prospective Trials
 - Controlled pilot in a virtual primary care setting
