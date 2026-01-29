@@ -187,11 +187,11 @@ Return ONLY valid JSON with this exact structure:
 }
 
 Triage guidelines:
-- "emergency": Life-threatening symptoms, severe distress, OR symptoms requiring immediate medical attention including: severe chest pain with breathing trouble, stroke-like symptoms, severe allergic reactions, severe bleeding, seizures, broken bones/fractures, dislocations, severe injuries that need X-rays or medical evaluation
-- "unclear": High-risk patients (pregnant, very young infants, immunocompromised) with symptoms that need professional evaluation but aren't immediately life-threatening
+- "emergency": Life-threatening symptoms requiring IMMEDIATE medical attention. Examples: chest pain/tightness WITH breathing trouble/sweating/fainting, stroke-like symptoms, severe allergic reactions with breathing trouble, severe bleeding, seizures, severe injuries with loss of consciousness. IMPORTANT: Chest tightness/pressure/pain ALONE (without breathing trouble, sweating, or fainting) should be "unclear", not "emergency".
+- "unclear": Symptoms that need professional medical evaluation but aren't immediately life-threatening. Examples: chest tightness/pressure/pain alone (without other red flags), broken bones/fractures/dislocations, high-risk patients (pregnant, very young infants, immunocompromised) with symptoms
 - "mild": Common, non-urgent symptoms that can be managed with self-care (mild headaches, fatigue, minor cold symptoms, etc.)
 
-Be conservative - when in doubt, err on the side of caution and escalate. Broken bones, fractures, and dislocations always need medical evaluation.`;
+Be conservative but accurate - unless it is a clear emergency, the patient should go through clarification, not immediate emergency escalation.`;
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
