@@ -142,17 +142,19 @@ const ruleBasedTriage = (messages: string[]): TriageDecision => {
     }
   }
 
-  // Broken bones need medical attention but aren't life-threatening - mark as unclear
+  // Sprains and broken bones need medical evaluation but aren't life-threatening - mark as mild
+  const hasSprain = /\b(sprain|sprained|twisted)\b/i.test(joined);
   const hasBrokenBone = severeSignals.includes("broken_bone");
   const otherSevereSignals = severeSignals.filter((s) => s !== "broken_bone");
   
+  // Only true emergencies escalate
   if (redFlags.length > 0 || otherSevereSignals.length > 0) {
     return { level: "emergency", redFlags, highRisk, severeSignals };
   }
   
-  // Broken bones/fractures need medical evaluation but go through normal flow
-  if (hasBrokenBone) {
-    return { level: "unclear", redFlags, highRisk, severeSignals };
+  // Sprains and broken bones get mild treatment (self-care + see doctor)
+  if (hasSprain || hasBrokenBone) {
+    return { level: "mild", redFlags, highRisk, severeSignals };
   }
 
   if (highRisk.length > 0) {
@@ -187,11 +189,11 @@ Return ONLY valid JSON with this exact structure:
 }
 
 Triage guidelines:
-- "emergency": Life-threatening symptoms requiring IMMEDIATE medical attention. Examples: chest pain/tightness WITH breathing trouble/sweating/fainting, stroke-like symptoms, severe allergic reactions with breathing trouble, severe bleeding, seizures, severe injuries with loss of consciousness. IMPORTANT: Chest tightness/pressure/pain ALONE (without breathing trouble, sweating, or fainting) should be "unclear", not "emergency".
-- "unclear": Symptoms that need professional medical evaluation but aren't immediately life-threatening. Examples: chest tightness/pressure/pain alone (without other red flags), broken bones/fractures/dislocations, high-risk patients (pregnant, very young infants, immunocompromised) with symptoms
-- "mild": Common, non-urgent symptoms that can be managed with self-care (mild headaches, fatigue, minor cold symptoms, etc.)
+- "emergency": ONLY life-threatening symptoms requiring IMMEDIATE medical attention (call 911). Examples: chest pain/tightness WITH breathing trouble/sweating/fainting, stroke-like symptoms (sudden confusion + trouble speaking + one-sided weakness), severe allergic reactions with breathing trouble, severe uncontrolled bleeding, active seizures, loss of consciousness. IMPORTANT: Do NOT mark as emergency unless there is immediate life-threatening risk. Chest tightness alone, sprains, minor injuries, or broken bones are NOT emergencies.
+- "unclear": Only use for high-risk patients (pregnant, very young infants <3 months, immunocompromised) with symptoms that need professional evaluation but aren't immediately life-threatening
+- "mild": All other symptoms including: sprains, minor injuries, broken bones/fractures (can provide self-care + see doctor), chest tightness alone, headaches, fatigue, cold symptoms, etc. These can have self-care recommendations with a note to contact a healthcare provider.
 
-Be conservative but accurate - unless it is a clear emergency, the patient should go through clarification, not immediate emergency escalation.`;
+Be VERY conservative - only mark as "emergency" if there is immediate life-threatening risk requiring 911. Sprains, broken bones, and minor injuries should be "mild" with self-care + healthcare provider follow-up.`;
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -240,13 +242,18 @@ Be conservative but accurate - unless it is a clear emergency, the patient shoul
     // Validate and normalize the response
     let level = parsed.level === "emergency" || parsed.level === "unclear" ? parsed.level : "mild";
     
-    // Post-process: Broken bones need medical attention but should go through normal flow (unclear, not emergency)
-    const hasBrokenBone = Array.isArray(parsed.severeSignals) && parsed.severeSignals.some((s: string) => 
-      /broken|fracture|dislocation/i.test(s)
-    ) || /\b(broke|broken|fracture|fractured|dislocated)\b/i.test(conversationText);
+    // Post-process: Ensure only true emergencies are marked as emergency
+    // Sprains, broken bones, minor injuries should be mild, not emergency or unclear
+    const hasSprainOrMinorInjury = /\b(sprain|sprained|twisted|minor injury|bruise|bruising)\b/i.test(conversationText);
+    const hasBrokenBone = /\b(broke|broken|fracture|fractured|dislocated)\b/i.test(conversationText);
     
-    if (hasBrokenBone && level === "emergency") {
-      level = "unclear"; // Broken bones need medical evaluation but aren't life-threatening
+    if ((hasSprainOrMinorInjury || hasBrokenBone) && level === "emergency") {
+      level = "mild"; // Sprains and broken bones need medical evaluation but aren't life-threatening - provide self-care + see doctor
+    }
+    
+    // Only mark as unclear for high-risk patients, not for injuries
+    if ((hasSprainOrMinorInjury || hasBrokenBone) && level === "unclear") {
+      level = "mild"; // These should get self-care recommendations, not escalation
     }
     
     return {
