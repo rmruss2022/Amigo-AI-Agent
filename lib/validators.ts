@@ -95,9 +95,9 @@ export function validateResponse(text: string, context: ValidationContext): Vali
         }
       });
 
-      // Check for follow-up timeframe
-      if (!/\bif this isn't improving in \d+ days?\b/i.test(text)) {
-        warnings.push('Should include follow-up timeframe: "If this isn\'t improving in [X days], please contact..."');
+      // Check for follow-up instruction (without conditional timeframe)
+      if (!/\bplease contact.*(healthcare|provider|clinic|urgent care|doctor)\b/i.test(text)) {
+        warnings.push('Should include follow-up instruction: "Please contact a healthcare provider for further evaluation."');
       }
     }
 

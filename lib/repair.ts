@@ -152,7 +152,7 @@ export const repairResponse = (context: RepairContext): string => {
   }
 
   if (context.stage === "recommendation") {
-    const followUp = "If this isn't improving in 3 days, please contact a local clinic or urgent care.";
+    const followUp = "Please contact a healthcare provider for further evaluation.";
     const disclaimer = `${CONSTRAINTS.DISCLAIMER}.`;
 
     if (context.triageLevel === "mild") {
